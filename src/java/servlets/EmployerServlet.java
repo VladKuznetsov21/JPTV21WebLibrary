@@ -5,10 +5,12 @@
  */
 package servlets;
 
-
 import entity.Author;
 import entity.Book;
+import entity.cequre.Role;
+import entity.cequre.User;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ejb.EJB;
@@ -17,38 +19,59 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import session.AuthorFacade;
 import session.BookFacade;
+import session.ReaderFacade;
+import session.RoleFacade;
 
 /**
  *
  * @author pupil
  */
-@WebServlet(name = "BookServlet", urlPatterns = {
-    "/listBooks",
+@WebServlet(name = "EmployerServlet", urlPatterns = {
+    
     "/newBook",
     "/createBook",
     "/newAuthor",
-    "/createAuthor"
+    "/createAuthor",
+    "/listReaders",
 })
-public class BookServlet extends HttpServlet {
+public class EmployerServlet extends HttpServlet {
 
     @EJB private AuthorFacade authorFacade;
     @EJB private BookFacade bookFacade;
+    @EJB private ReaderFacade readerFacade;
+    @EJB private RoleFacade roleFacade;
     
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
         request.setCharacterEncoding("UTF-8");
+           HttpSession session = request.getSession(false);
+        if(session == null){
+            request.setAttribute("info", "У вас нет достаночного права. Авторизуйтесь!");
+            request.getRequestDispatcher("/index.jsp").forward(request, response);
+            return;
+        }
+        User authUser = (User) session.getAttribute("user");
+        if(authUser==null){
+            request.setAttribute("info", "У вас нет достаночного права. Авторизуйтесь!");
+            request.getRequestDispatcher("/index.jsp").forward(request, response);
+            return;
+        }
+        Role roleEmployee = roleFacade.findRoleByName("EMPLOYEE");
+        if(!authUser.getRoles().contains(roleEmployee)){
+            request.setAttribute("info", "У вас нет достаночного права. Авторизуйтесь!");
+            request.getRequestDispatcher("/index.jsp").forward(request, response);
+            return;
+        }
         String path = request.getServletPath();
         switch (path) {
-            case "/listBooks":
-                request.setAttribute("listBooks", bookFacade.findAll());
-                request.getRequestDispatcher("/listBooks.jsp").forward(request, response);
-                break;
+            
             case "/newBook":
                 request.setAttribute("listAuthors", authorFacade.findAll());
-                request.getRequestDispatcher("/createBook.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/books/createBook.jsp").forward(request, response);
                 break;
             case "/createBook":
                 String name = request.getParameter("name");
@@ -72,10 +95,10 @@ public class BookServlet extends HttpServlet {
                     authorFacade.edit(a);
                 }
                 request.setAttribute("listBooks", bookFacade.findAll());
-                request.getRequestDispatcher("/listBooks.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/books/listBooks.jsp").forward(request, response);
                 break;
             case "/newAuthor":
-                request.getRequestDispatcher("/createAuthor.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/authors/createAuthor.jsp").forward(request, response);
                 break;
             case "/createAuthor":
                 String firstname = request.getParameter("firstname");
@@ -86,12 +109,14 @@ public class BookServlet extends HttpServlet {
                 authorFacade.create(newAuthor);
                 request.getRequestDispatcher("/newBook").forward(request, response);
                 break;
-            case "/listAuthors":
-                request.setAttribute("listAuthors", authorFacade.findAll());
-                request.getRequestDispatcher("/WEB-INF/listAuthors.jsp").forward(request, response);
-                break;
+             
+            case "/listReaders":
+                request.setAttribute("listReaders", readerFacade.findAll());
+                request.getRequestDispatcher("/WEB-INF/readers/listReaders.jsp").forward(request, response);
+                break;    
         }
     }
+
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
